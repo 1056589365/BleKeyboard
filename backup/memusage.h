@@ -1,0 +1,1 @@
+// logi("Mem free: %dKb", heap_caps_get_free_size(MALLOC_CAP_INTERNAL)/1024);
