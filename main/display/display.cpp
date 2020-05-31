@@ -34,7 +34,7 @@ void Displayer::begin()
 	u8g2_InitDisplay(&u8g2);
 	u8g2_SetPowerSave(&u8g2, false);
 
-	EC(xTaskCreate(this->task, "display", 4*1024, (void*)this, 5, NULL), pdTRUE);
+	EC(xTaskCreate(this->task, "display", 64*1024, (void*)this, 5, NULL), pdTRUE);
     EC(xTaskCreate(this->onInit, "display-init", 8*1024, (void*)this, 5, NULL), pdTRUE);
 }
 
@@ -90,31 +90,7 @@ void Displayer::task(void* pvParameter)
     vTaskDelete(NULL);
 }
 
-void Displayer::input(uint8_t value)
+void Displayer::input(KeyCode value)
 {
-    switch (value)
-    {
-    case 0x40:
-        pm.input(KeyCode::UP);
-        break;
-    
-    case 0x19:
-        pm.input(KeyCode::DOWN);
-        break;
-
-    case 0x07:
-        pm.input(KeyCode::LEFT);
-        break;
-
-    case 0x09:
-        pm.input(KeyCode::RIGHT);
-        break;
-    
-    case 0x15:
-        pm.input(KeyCode::ENTER);
-        break;
-    
-    default:
-        break;
-    }
+    pm.input(value);
 }

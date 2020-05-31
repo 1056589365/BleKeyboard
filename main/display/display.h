@@ -27,7 +27,7 @@ public:
 
 	void begin();
 	void powerSave(bool isOn);
-	void input(uint8_t value);
+	void input(KeyCode value);
 
 private:
 	static void task(void* pvParameter);

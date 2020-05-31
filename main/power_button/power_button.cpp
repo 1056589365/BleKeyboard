@@ -68,7 +68,7 @@ void power_button_init(uint8_t wakeup_pin)
     }, NULL);
 
     gpio_config_t io_conf;
-	io_conf.intr_type = GPIO_INTR_POSEDGE;
+	io_conf.intr_type = GPIO_INTR_POSEDGE; // GPIO_INTR_ANYEDGE
 	io_conf.mode = GPIO_MODE_INPUT;
 	io_conf.pin_bit_mask = 1ULL << ext_wakeup_pin;
 	io_conf.pull_down_en = gpio_pulldown_t(0);

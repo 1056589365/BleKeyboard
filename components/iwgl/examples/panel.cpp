@@ -1,3 +1,4 @@
+#pragma once
 #include <iwgl.h>
 
 
@@ -15,7 +16,7 @@ public:
 
 Template::Template(PM* pm) : Panel(pm)
 {
-	addElement("title",   new Label("", 63, 1, 120, 13, u8g2_font_wqy12_t_gb2312, Label::CENTER, Label::H_FLIP));
+	addElement("title",   new Label("ab", 63, 1, 120, 13, u8g2_font_wqy12_t_gb2312, Label::CENTER, Label::H_FLIP));
 }
 
 Template::~Template()
@@ -25,7 +26,7 @@ Template::~Template()
 
 void Template::onDraw()
 {
-	((Label*)getElement("xxx"))->text.assign("");
+	((Label*)getElement("title"))->text.assign("");
 
 	Panel::onDraw();
 }
@@ -33,6 +34,11 @@ void Template::onDraw()
 void Template::onUpdate(TickType_t deltaTime)
 {
 
+}
+
+void Template::onResult()
+{
+	
 }
 
 void Template::onInput(Args parameters)

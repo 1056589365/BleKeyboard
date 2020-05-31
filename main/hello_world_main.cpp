@@ -1,5 +1,6 @@
 #include <string>
 #include <map>
+#include <cstdlib>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -47,7 +48,27 @@ void init_i2c()
 
 void onUartInput(char* data, size_t len)
 {
-	logi("UART: %s", data);
+	//logi("UART: %s", data);
+
+	switch (data[0])
+	{
+		case 'w':
+			dp.input(KeyCode::UP);
+			break;
+		case 's':
+			dp.input(KeyCode::DOWN);
+			break;
+		case 'a':
+			dp.input(KeyCode::LEFT);
+			break;
+		case 'd':
+			dp.input(KeyCode::RIGHT);
+			break;
+		case ' ':
+			dp.input(KeyCode::ENTER);
+			break;
+
+	}
 }
 
 void onKey(uint8_t pin, uint8_t val)
@@ -78,7 +99,9 @@ void onKey(uint8_t pin, uint8_t val)
 	
 	if(val!=0 && bleKeyboard.isConnected())
 	{
-		bleKeyboard.print(keycode.at(pin).data());
+		double v = rand() / (double)RAND_MAX;
+		bleKeyboard.setBatteryLevel((int)100*v);
+		//bleKeyboard.print(keycode.at(pin).data());
 	}
 }
 
@@ -92,9 +115,9 @@ void onDisplayInit(void* arg)
 	Startup& su = *(new Startup(&pm));
     su.switchIn();
 
-    //su.println("加载BLE键盘..");
-	//vTaskDelay(1700 / portTICK_RATE_MS);
-    //bleKeyboard.begin();
+    su.println("加载BLE键盘..");
+	vTaskDelay(1700 / portTICK_RATE_MS);
+    bleKeyboard.begin();
 
     vTaskDelay(700 / portTICK_RATE_MS);
 
@@ -125,6 +148,8 @@ void onDisplayInit(void* arg)
 
 extern "C" void app_main()
 {
+	srand((unsigned int)(time(NULL)));
+	
 	gpio_install_isr_service(0);
 
 	init_i2c();
