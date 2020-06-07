@@ -63,17 +63,17 @@ void power_button_init(uint8_t wakeup_pin)
 {
     ext_wakeup_pin = gpio_num_t(wakeup_pin);
 
-    gpio_isr_handler_add(ext_wakeup_pin, [](void* arg){
-        xTaskResumeFromISR(pid_powerButton);
-    }, NULL);
-
     gpio_config_t io_conf;
 	io_conf.intr_type = GPIO_INTR_POSEDGE; // GPIO_INTR_ANYEDGE
 	io_conf.mode = GPIO_MODE_INPUT;
 	io_conf.pin_bit_mask = 1ULL << ext_wakeup_pin;
 	io_conf.pull_down_en = gpio_pulldown_t(0);
-	io_conf.pull_up_en = gpio_pullup_t(0);
+	io_conf.pull_up_en = gpio_pullup_t(1);
 	gpio_config(&io_conf);
 
-    EC(xTaskCreate(task_poweroff, "PowerButton", 2*1024, NULL, 10, &pid_powerButton), pdTRUE);
+    EC(xTaskCreate(task_poweroff, "PowerButton", 4*1024, NULL, 10, &pid_powerButton), pdTRUE);
+
+    gpio_isr_handler_add(ext_wakeup_pin, [](void* arg){
+        xTaskResumeFromISR(pid_powerButton);
+    }, NULL);
 }

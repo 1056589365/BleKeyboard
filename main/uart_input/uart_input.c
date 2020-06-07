@@ -28,7 +28,7 @@ static void uart_event_task(void *pvParameters)
             switch(event.type) 
             {
                 case UART_DATA:
-                    // logi("[UART DATA]: %d: ", event.size);
+                    //logi("[UART DATA]: %d: ", event.size);
                     uart_read_bytes(UART_NUM_0, dtmp, event.size, portMAX_DELAY);
                     //uart_write_bytes(UART_NUM_0, (const char*) dtmp, event.size);
                     
@@ -55,5 +55,5 @@ void uart_input_init(void (*callback)(char* data, size_t len))
 
     uart_input_callback = callback;
 
-    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 10, NULL);
+    xTaskCreate(uart_event_task, "uart_input", 4*1024, NULL, 10, NULL);
 }

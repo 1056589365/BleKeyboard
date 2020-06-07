@@ -9,15 +9,12 @@
 #include <driver/i2c.h>
 
 #include "BleKeyboard.h"
-#include "display.h"
 #include "power_button.h"
 #include "qadc.h"
-#include "io_extension.h"
+// #include "io_extension.h"
 #include "uart_input.h"
 #include "error_check.h"
 
-#include "Startup.h"
-#include "Home.h"
 #include "project.h"
 
 #define logi(...) ESP_LOGI("main", ##__VA_ARGS__)
@@ -27,8 +24,7 @@ using namespace std;
 #define SDA 26
 #define SCL 25
 
-BleKeyboard bleKeyboard;
-Displayer dp;
+// BleKeyboard bleKeyboard;
 
 void init_i2c()
 {
@@ -48,27 +44,9 @@ void init_i2c()
 
 void onUartInput(char* data, size_t len)
 {
-	//logi("UART: %s", data);
-
-	switch (data[0])
-	{
-		case 'w':
-			dp.input(KeyCode::UP);
-			break;
-		case 's':
-			dp.input(KeyCode::DOWN);
-			break;
-		case 'a':
-			dp.input(KeyCode::LEFT);
-			break;
-		case 'd':
-			dp.input(KeyCode::RIGHT);
-			break;
-		case ' ':
-			dp.input(KeyCode::ENTER);
-			break;
-
-	}
+	logi("UART: %s", data);
+	//double v = rand() / (double)RAND_MAX;
+	//bleKeyboard.setBatteryLevel((int)100*v);
 }
 
 void onKey(uint8_t pin, uint8_t val)
@@ -97,53 +75,132 @@ void onKey(uint8_t pin, uint8_t val)
 
 	logi("pin interrupt: %d is %d", pin, val);
 	
-	if(val!=0 && bleKeyboard.isConnected())
+	if(val!=0/* && bleKeyboard.isConnected()*/)
 	{
-		double v = rand() / (double)RAND_MAX;
-		bleKeyboard.setBatteryLevel((int)100*v);
+		//double v = rand() / (double)RAND_MAX;
+		//bleKeyboard.setBatteryLevel((int)100*v);
 		//bleKeyboard.print(keycode.at(pin).data());
 	}
 }
 
-void onDisplayInit(void* arg)
+void initPin(int io)
 {
-	Displayer& dp = *(Displayer*)arg;
-	PM& pm = dp.pm;
+	gpio_config_t io_conf;
+	io_conf.intr_type = GPIO_INTR_POSEDGE;
+	io_conf.mode = GPIO_MODE_INPUT;
+	io_conf.pin_bit_mask = 1ULL << io;
+	io_conf.pull_down_en = gpio_pulldown_t(0);
+	io_conf.pull_up_en = gpio_pullup_t(1);
+	gpio_config(&io_conf);
+}
 
-	(new Home(&pm))->switchIn();
+struct sp
+{
+	int pin;
+	int sta;
+};
 
-	Startup& su = *(new Startup(&pm));
-    su.switchIn();
+xQueueHandle isrq = xQueueCreate(10, sizeof(sp));
 
-    su.println("加载BLE键盘..");
-	vTaskDelay(1700 / portTICK_RATE_MS);
-    bleKeyboard.begin();
+void IRAM_ATTR gpioisr(void* arg)
+{
+	int pin = *((int*)arg);
+	sp ssss;
+	ssss.pin = pin;
+	ssss.sta = gpio_get_level(gpio_num_t(pin));
 
-    vTaskDelay(700 / portTICK_RATE_MS);
+    xQueueSendFromISR(isrq, &ssss, NULL);
+}
 
-    su.println("加载键盘驱动..");
-    mcp23017_init(17, onKey);
+int pins[] = {
+	34, //
+	35, //
+	32, 
+	33, 
+	25, 
+	26, 
+	27, 
+	14, 
+	12 ,
+	13 ,
+	//15,
+	4 , 
+	16, 
+	17,
+	5,
+	18,
+	19, 
+	21, 
+	
+	//22,23
+	};
 
-    vTaskDelay(700 / portTICK_RATE_MS);
+int led = 23;
 
-    su.println("加载ADC..");
+void initLed()
+{
+	gpio_config_t io_conf;
+	//io_conf.intr_type = GPIO_INTR_POSEDGE;
+	io_conf.mode = GPIO_MODE_OUTPUT;
+	io_conf.pin_bit_mask = 1ULL << led;
+	io_conf.pull_down_en = gpio_pulldown_t(0);
+	io_conf.pull_up_en = gpio_pullup_t(0);
+	gpio_config(&io_conf);
+
+	gpio_set_level(gpio_num_t(led), false);
+}
+
+void a22333(void* arg)
+{
+	initLed();
+
+	for(int i=0;i<sizeof(pins)/sizeof(int);i++)
+	{
+		int pin = pins[i];
+		initPin(pin);
+		gpio_isr_handler_add(gpio_num_t(pin), gpioisr, (void*)&pins[i]);
+		logi("prepering: %d", pin);
+	}
+
+	logi("init done");
+
+	sp snapshop;
+	snapshop.pin = -1;
+	snapshop.sta = -100;
+
+    while(true)
+	{
+		if(xQueueReceive(isrq, &snapshop, portMAX_DELAY))
+		{
+			logi("GPIO %d interrrupt, val: %d", snapshop.pin, snapshop.sta);
+		}
+    }
+}
+
+void initIo()
+{
+	xTaskCreate(a22333, "a22333", 8*1024, NULL, 5, NULL);
+}
+
+void init_(void* arg)
+{
+	logi("Loading BLE service..");
+	//bleKeyboard.begin();
+
+	initIo();
+
+	logi("Loading ADC..");
 	qadc_initialize();
 
-    vTaskDelay(700 / portTICK_RATE_MS);
-
-    su.println("加载电源按钮..");
+	logi("Loading PowerButton..");
 	power_button_init(15);
 
-	vTaskDelay(700 / portTICK_RATE_MS);
-
-	su.println("加载UART..");
+	logi("Loading UART..");
 	uart_input_init(onUartInput);
 
-	vTaskDelay(400 / portTICK_RATE_MS);
+    logi("initialize finished");
 
-    su.exit();
-    
-    vTaskDelete(NULL);
+	vTaskDelete(nullptr);
 }
 
 extern "C" void app_main()
@@ -152,12 +209,9 @@ extern "C" void app_main()
 	
 	gpio_install_isr_service(0);
 
+	logi("Loading I2C driver..");
 	init_i2c();
-
-	dp.onInit = onDisplayInit;
-	dp.begin();
-	dp.powerSave(false);
-
-    logi("initialize done");
+	
+	EC(xTaskCreate(init_, "initialize", 16*1024, NULL, 10, nullptr), pdTRUE);
 }
 

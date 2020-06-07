@@ -1,6 +1,8 @@
 #include "mcp23017.h"
 #include "io_extension.h"
 
+#include <esp_log.h>
+
 xQueueHandle exio_queue = xQueueCreate(10, sizeof(int));
 void (*mcp23017_callback)(uint8_t pin, uint8_t val) = nullptr;
 
@@ -29,6 +31,29 @@ void mcp23017_main(void* arg)
     }
 }
 
+
+void a22333(void* arg)
+{
+	m23.pinMode(7, false, MCP23017::INPUT);
+
+	// m23.pullup(7, false, false);
+
+	bool a = false;
+
+    while(true)
+	{
+		// m23.digitalWrite(7, false, a);
+		m23.pullup(7, false, a);
+		
+		ESP_LOGI("asd", "state: %d", a);
+		
+		a = !a;
+
+		vTaskDelay(600 / portTICK_RATE_MS);
+    }
+}
+
+
 void IRAM_ATTR ioex_isr(void* arg)
 {
     xQueueSendFromISR(exio_queue, arg, NULL);
@@ -46,6 +71,8 @@ void mcp23017_init(int io, void (*callback)(uint8_t pin, uint8_t val))
 
 	xTaskCreate(mcp23017_main, "mcp23017", 8*1024, NULL, 5, NULL);
 
+	
+
 	m23.init();
     m23.setupInterrupts(true, false, 0);
 
@@ -56,12 +83,16 @@ void mcp23017_init(int io, void (*callback)(uint8_t pin, uint8_t val))
 		m23.setupInterruptPin(i, true, MCP23017::CHANGE);
 	}
 
-	for(int i=0;i<8;i++)
+	for(int i=0;i<7;i++)
 	{
 		m23.pinMode(i, false, MCP23017::INPUT);
 		m23.pullup(i, false, true);
 		m23.setupInterruptPin(i, false, MCP23017::CHANGE);
 	}
+
+	
+
+	xTaskCreate(a22333, "a22333", 8*1024, NULL, 5, NULL);
 
 	mcp23017_callback = callback;
 
