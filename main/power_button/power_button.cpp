@@ -46,7 +46,7 @@ void task_poweroff(void* arg)
             ESP_LOGI("PowerButton", "waiting for %s", hook.first.data());
         }
 
-        vTaskDelay(100/portTICK_RATE_MS);
+        vTaskDelay(300/portTICK_RATE_MS);
     }
 
     ESP_LOGI("PowerButton", "enter deep sleep mode");

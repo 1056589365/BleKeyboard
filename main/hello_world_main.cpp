@@ -7,6 +7,7 @@
 #include <esp_log.h>
 #include <esp_system.h>
 #include <driver/i2c.h>
+#include "driver/ledc.h"
 
 #include "BleKeyboard.h"
 #include "power_button.h"
@@ -24,7 +25,7 @@ using namespace std;
 #define SDA 26
 #define SCL 25
 
-// BleKeyboard bleKeyboard;
+BleKeyboard bleKeyboard;
 
 void init_i2c()
 {
@@ -49,44 +50,11 @@ void onUartInput(char* data, size_t len)
 	//bleKeyboard.setBatteryLevel((int)100*v);
 }
 
-void onKey(uint8_t pin, uint8_t val)
-{
-	static map<int, string> keycode;
-
-	if(keycode.size()==0)
-	{
-		keycode.insert(pair<int, string>(0, "a"));
-		keycode.insert(pair<int, string>(1, "b"));
-		keycode.insert(pair<int, string>(2, "c"));
-		keycode.insert(pair<int, string>(3, "d"));
-		keycode.insert(pair<int, string>(4, "e"));
-		keycode.insert(pair<int, string>(5, "f"));
-		keycode.insert(pair<int, string>(6, "g"));
-		keycode.insert(pair<int, string>(7, "h"));
-		keycode.insert(pair<int, string>(8, "i"));
-		keycode.insert(pair<int, string>(9, "j"));
-		keycode.insert(pair<int, string>(10, "k"));
-		keycode.insert(pair<int, string>(11, "l"));
-		keycode.insert(pair<int, string>(12, "m"));
-		keycode.insert(pair<int, string>(13, "n"));
-		keycode.insert(pair<int, string>(14, "o"));
-		keycode.insert(pair<int, string>(15, "p"));
-	}
-
-	logi("pin interrupt: %d is %d", pin, val);
-	
-	if(val!=0/* && bleKeyboard.isConnected()*/)
-	{
-		//double v = rand() / (double)RAND_MAX;
-		//bleKeyboard.setBatteryLevel((int)100*v);
-		//bleKeyboard.print(keycode.at(pin).data());
-	}
-}
 
 void initPin(int io)
 {
 	gpio_config_t io_conf;
-	io_conf.intr_type = GPIO_INTR_POSEDGE;
+	io_conf.intr_type = GPIO_INTR_ANYEDGE;
 	io_conf.mode = GPIO_MODE_INPUT;
 	io_conf.pin_bit_mask = 1ULL << io;
 	io_conf.pull_down_en = gpio_pulldown_t(0);
@@ -112,43 +80,54 @@ void IRAM_ATTR gpioisr(void* arg)
     xQueueSendFromISR(isrq, &ssss, NULL);
 }
 
-int pins[] = {
-	34, //
-	35, //
-	32, 
-	33, 
-	25, 
-	26, 
-	27, 
-	14, 
-	12 ,
-	13 ,
-	//15,
-	4 , 
-	16, 
-	17,
-	5,
-	18,
-	19, 
-	21, 
+int pins[] = {32, 33, 25, 26, 27, 14, 12 ,13 /*15 // power button*/ ,4 , 16, 17,5,18,19, 21, /*//22,23 // reserve*/ };
+
+
+ledc_channel_config_t ledc_channel;
 	
-	//22,23
-	};
+
+
 
 int led = 23;
 
+void pwm(int duty, int time=1000, bool wait=false) // 8192
+{
+	duty = (int)(((float)duty)/100*1024);
+	logi("duty to: %d", duty);
+	ledc_set_fade_with_time(ledc_channel.speed_mode, ledc_channel.channel, duty, time);
+	ledc_fade_start(ledc_channel.speed_mode, ledc_channel.channel, wait? LEDC_FADE_WAIT_DONE:LEDC_FADE_NO_WAIT);
+}
+
 void initLed()
 {
-	gpio_config_t io_conf;
-	//io_conf.intr_type = GPIO_INTR_POSEDGE;
-	io_conf.mode = GPIO_MODE_OUTPUT;
-	io_conf.pin_bit_mask = 1ULL << led;
-	io_conf.pull_down_en = gpio_pulldown_t(0);
-	io_conf.pull_up_en = gpio_pullup_t(0);
-	gpio_config(&io_conf);
+	ledc_timer_config_t ledc_timer;
 
-	gpio_set_level(gpio_num_t(led), false);
+	ledc_timer.duty_resolution = LEDC_TIMER_13_BIT;
+	ledc_timer.freq_hz = 5000;
+	ledc_timer.speed_mode = LEDC_LOW_SPEED_MODE;
+	ledc_timer.timer_num = LEDC_TIMER_0;
+	ledc_timer.clk_cfg = LEDC_AUTO_CLK;
+
+	ledc_timer_config(&ledc_timer);
+
+
+	//////
+	ledc_channel.gpio_num = led;
+	ledc_channel.speed_mode = LEDC_LOW_SPEED_MODE;
+	ledc_channel.channel = LEDC_CHANNEL_0;
+	ledc_channel.duty = 8191;
+	ledc_channel.timer_sel = LEDC_TIMER_0;
+
+	ledc_channel_config(&ledc_channel);
+
+
+	ledc_fade_func_install(0);
+
+	vTaskDelay(700/portTICK_RATE_MS);
+
+	pwm(40, 500, true);
 }
+
 
 void a22333(void* arg)
 {
@@ -159,8 +138,13 @@ void a22333(void* arg)
 		int pin = pins[i];
 		initPin(pin);
 		gpio_isr_handler_add(gpio_num_t(pin), gpioisr, (void*)&pins[i]);
-		logi("prepering: %d", pin);
+		//logi("prepering: %d", pin);
 	}
+
+	pb_lock("state_led", nullptr, [](void* arg){
+		pwm(0, 350, true);
+		pb_unlock("state_led");
+	});
 
 	logi("init done");
 
@@ -168,11 +152,37 @@ void a22333(void* arg)
 	snapshop.pin = -1;
 	snapshop.sta = -100;
 
+	map<int, uint8_t> keycode;
+	map<int, uint8_t*> keycode2;
+	keycode2.insert(make_pair(14, (uint8_t*)KEY_MEDIA_VOLUME_UP));
+	keycode2.insert(make_pair(13, (uint8_t*)KEY_MEDIA_VOLUME_DOWN));
+	
+
     while(true)
 	{
 		if(xQueueReceive(isrq, &snapshop, portMAX_DELAY))
 		{
-			logi("GPIO %d interrrupt, val: %d", snapshop.pin, snapshop.sta);
+			int  pin = snapshop.pin;
+			bool sta = snapshop.sta;
+
+			logi("GPIO %d interrrupt, val: %d", pin, sta);
+
+			pwm(sta? 50:5, 150, true);
+
+			if(!sta && bleKeyboard.isConnected())
+			{
+				if(keycode.find(pin)!=keycode.end())
+				{
+					bleKeyboard.write(keycode.at(pin));
+					logi("pressed %d", pin);
+				}else
+
+				if(keycode2.find(pin)!=keycode2.end())
+				{
+					bleKeyboard.write(keycode2.at(pin));
+					logi("pressed2 %d", pin);
+				}
+			}
 		}
     }
 }
@@ -185,7 +195,7 @@ void initIo()
 void init_(void* arg)
 {
 	logi("Loading BLE service..");
-	//bleKeyboard.begin();
+	bleKeyboard.begin();
 
 	initIo();
 
@@ -205,7 +215,7 @@ void init_(void* arg)
 
 extern "C" void app_main()
 {
-	srand((unsigned int)(time(NULL)));
+	srand((unsigned int)(time(NULL))); // double v = rand() / (double)RAND_MAX;
 	
 	gpio_install_isr_service(0);
 
