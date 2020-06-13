@@ -77,10 +77,10 @@ void onBleDisconnect()
 
 void a22333(void* arg)
 {
-	vTaskDelay(800/portTICK_RATE_MS);
 	led.initialize();
-	
-	led.pwm(1.0, 600);
+	led.pwm(1.0, 10);
+
+
 
 	// double v = esp_random() / (double)UINT32_MAX;
 	float pv = qadc_get_voltage(ADC1_GPIO36_CHANNEL, 16) / 0.1648036124794745;
@@ -120,7 +120,7 @@ void a22333(void* arg)
 
 	km.add(14, (uint8_t*)KEY_MEDIA_VOLUME_UP);
 	km.add(13, (uint8_t*)KEY_MEDIA_VOLUME_DOWN);
-	km.add(5, (uint8_t*)KEY_MEDIA_PREVIOUS_TRACK);
+	km.add(5,  (uint8_t*)KEY_MEDIA_PREVIOUS_TRACK);
 	km.add(33, (uint8_t*)KEY_MEDIA_NEXT_TRACK);
 	km.add(12, (uint8_t*)KEY_MEDIA_PLAY_PAUSE);
 	km.add(17, (uint8_t*)KEY_MEDIA_MUTE);
@@ -161,9 +161,6 @@ extern "C" void app_main()
 	bleKeyboard._onConnect = onBleConnect;
 	bleKeyboard._onDisconnect = onBleDisconnect;
 
-	// logi("Loading GPIOs..");
-	xTaskCreate(a22333, "a22333", 8*1024, NULL, 5, NULL);
-
 	// logi("Loading ADC..");
 	qadc_initialize();
 	qadc_config_io(ADC1_GPIO36_CHANNEL);
@@ -173,6 +170,9 @@ extern "C" void app_main()
 
 	// logi("Loading UART..");
 	uart_input_init(onUartInput);
+
+
+	xTaskCreate(a22333, "a22333", 16*1024, NULL, 5, NULL);
 
     logi("initialize done");
 }
