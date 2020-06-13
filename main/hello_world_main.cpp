@@ -120,8 +120,8 @@ void a22333(void* arg)
 
 	km.add(14, (uint8_t*)KEY_MEDIA_VOLUME_UP);
 	km.add(13, (uint8_t*)KEY_MEDIA_VOLUME_DOWN);
-	km.add(5,  (uint8_t*)KEY_MEDIA_PREVIOUS_TRACK);
-	km.add(33, (uint8_t*)KEY_MEDIA_NEXT_TRACK);
+	km.add(33, (uint8_t*)KEY_MEDIA_PREVIOUS_TRACK);
+	km.add(5,  (uint8_t*)KEY_MEDIA_NEXT_TRACK);
 	km.add(12, (uint8_t*)KEY_MEDIA_PLAY_PAUSE);
 	km.add(17, (uint8_t*)KEY_MEDIA_MUTE);
 
