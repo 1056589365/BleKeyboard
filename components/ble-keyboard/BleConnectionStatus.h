@@ -17,6 +17,9 @@ public:
   BLECharacteristic* inputKeyboard;
   BLECharacteristic* outputKeyboard;
   BLECharacteristic* inputMediaKeys;
+
+  void (*_onConnect)() = nullptr;
+  void (*_onDisconnect)() = nullptr;
 };
 
 #endif // CONFIG_BT_ENABLED

@@ -197,7 +197,7 @@ BLECharacteristic* BLEHIDDevice::protocolMode() {
 void BLEHIDDevice::setBatteryLevel(uint8_t level) {
 	m_batteryLevelCharacteristic->setValue(&level, 1);
 	//m_batteryLevelCharacteristic->notify();
-	ESP_LOGI("aa", "power: %d", level);
+	//ESP_LOGI("aa", "power: %d", level);
 }
 /*
  * @brief Returns battery level characteristic

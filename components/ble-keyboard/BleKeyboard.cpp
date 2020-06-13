@@ -153,6 +153,9 @@ void BleKeyboard::taskServer(void* pvParameter) {
 	pAdvertising->start();
 	bleKeyboardInstance->hid->setBatteryLevel(bleKeyboardInstance->batteryLevel);
 
+	bleKeyboardInstance->connectionStatus->_onConnect = bleKeyboardInstance->_onConnect;
+	bleKeyboardInstance->connectionStatus->_onDisconnect = bleKeyboardInstance->_onDisconnect;
+	
 	ESP_LOGD(LOG_TAG, "Advertising started!");
 	//vTaskDelay(portMAX_DELAY); //delay(portMAX_DELAY);
 	vTaskDelete(nullptr);

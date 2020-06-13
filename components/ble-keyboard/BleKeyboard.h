@@ -116,6 +116,9 @@ public:
   uint8_t batteryLevel;
   std::string deviceManufacturer;
   std::string deviceName;
+
+  void (*_onConnect)() = nullptr;
+  void (*_onDisconnect)() = nullptr;
 protected:
   virtual void onStarted(BLEServer *pServer) { };
 };

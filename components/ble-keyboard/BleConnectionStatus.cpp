@@ -11,6 +11,8 @@ void BleConnectionStatus::onConnect(BLEServer* pServer)
 
   desc = (BLE2902*)this->inputMediaKeys->getDescriptorByUUID(BLEUUID((uint16_t)0x2902));
   desc->setNotifications(true);
+
+  if(_onConnect!=nullptr) _onConnect();
 }
 
 void BleConnectionStatus::onDisconnect(BLEServer* pServer)
@@ -22,4 +24,5 @@ void BleConnectionStatus::onDisconnect(BLEServer* pServer)
   desc = (BLE2902*)this->inputMediaKeys->getDescriptorByUUID(BLEUUID((uint16_t)0x2902));
   desc->setNotifications(false);
 
+  if(_onDisconnect!=nullptr) _onDisconnect();
 }
