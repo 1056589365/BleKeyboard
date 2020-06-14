@@ -24,9 +24,9 @@ public:
 
 	bool isPressing(uint8_t key);
 
-	bool press(uint8_t key, BleKeyboard& blekb);
+	bool press(uint8_t key, BleKeyboard& blekb, void (*callback)(uint8_t key));
 
-	bool release(uint8_t key, BleKeyboard& blekb);
+	bool release(uint8_t key, BleKeyboard& blekb, void (*callback)(uint8_t key));
 
-	bool write(uint8_t key, BleKeyboard& blekb);
+	bool write(uint8_t key, BleKeyboard& blekb, void (*callback)(uint8_t key));
 };

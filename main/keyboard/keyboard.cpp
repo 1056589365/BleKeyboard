@@ -1,4 +1,7 @@
 #include "keyboard.h"
+#include "esp_log.h"
+
+#define logi(...) ESP_LOGI("keyboard", ##__VA_ARGS__)
 
 void KeycodeMapping::add(uint8_t key, uint8_t code)
 {
@@ -34,12 +37,14 @@ bool KeycodeMapping::isPressing(uint8_t key)
 	return pressings.find(key)!=pressings.end();
 }
 
-bool KeycodeMapping::press(uint8_t key, BleKeyboard& blekb)
+bool KeycodeMapping::press(uint8_t key, BleKeyboard& blekb, void (*callback)(uint8_t key))
 {
 	if(checka(key) && !isPressing(key))
 	{
 		blekb.press(keycodea.at(key));
 		pressings.insert(key);
+		if(callback) callback(key);
+		logi("key %d pressed", key);
 		return true;
 	}
 
@@ -47,18 +52,22 @@ bool KeycodeMapping::press(uint8_t key, BleKeyboard& blekb)
 	{
 		blekb.press(keycodeb.at(key));
 		pressings.insert(key);
+		if(callback) callback(key);
+		logi("key %d pressed", key);
 		return true;
 	}
 
 	return false;
 }
 
-bool KeycodeMapping::release(uint8_t key, BleKeyboard& blekb)
+bool KeycodeMapping::release(uint8_t key, BleKeyboard& blekb, void (*callback)(uint8_t key))
 {
 	if(checka(key) && isPressing(key))
 	{
 		blekb.release(keycodea.at(key));
 		pressings.erase(key);
+		if(callback) callback(key);
+		logi("key %d released", key);
 		return true;
 	}
 
@@ -66,23 +75,27 @@ bool KeycodeMapping::release(uint8_t key, BleKeyboard& blekb)
 	{
 		blekb.release(keycodeb.at(key));
 		pressings.erase(key);
+		if(callback) callback(key);
+		logi("key %d released", key);
 		return true;
 	}
 
 	return false;
 }
 
-bool KeycodeMapping::write(uint8_t key, BleKeyboard& blekb)
+bool KeycodeMapping::write(uint8_t key, BleKeyboard& blekb, void (*callback)(uint8_t key))
 {
 	if(checka(key))
 	{
 		blekb.write(keycodea.at(key));
+		if(callback) callback(key);
 		return true;
 	}
 
 	if(checkb(key))
 	{
 		blekb.write(keycodeb.at(key));
+		if(callback) callback(key);
 		return true;
 	}
 

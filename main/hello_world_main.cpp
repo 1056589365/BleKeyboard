@@ -7,7 +7,6 @@
 #include <esp_log.h>
 #include <esp_system.h>
 #include <driver/i2c.h>
-#include <esp_system.h>
 
 #include "BleKeyboard.h"
 #include "power_button.h"
@@ -25,8 +24,6 @@ using namespace std;
 
 
 BleKeyboard bleKeyboard;
-
-LED led(23);
 
 void onUartInput(char* data, size_t len)
 {
@@ -56,33 +53,29 @@ int pins[] = {32, 33, 25, 26, 27, 14, 12 ,13 /*15 // power button*/ ,4 , 16, 17,
 
 bool bleConnected = false;
 
-float map_v(float val, float I_Min, float I_Max, float O_Min, float O_Max)
-{
-	return(((val-I_Min)*((O_Max-O_Min)/(I_Max-I_Min)))+O_Min);
-}
+
+LEDSTA ls(23);
 
 void onBleConnect()
 {
 	logi("ble connect");
 	bleConnected = true;
-	led.pwm(0.4, 130);
+	ls.newState(LEDSTA::CONNECTED);
 }
 
 void onBleDisconnect()
 {
 	logi("ble disconnect");
 	bleConnected = false;
-	led.pwm(1.0, 130);
+	ls.newState(LEDSTA::WAITING);
 }
 
 void a22333(void* arg)
 {
-	led.initialize();
-	led.pwm(1.0, 10);
+	ls.start();
 
+	ls.newState(LEDSTA::WAITING);
 
-
-	// double v = esp_random() / (double)UINT32_MAX;
 	float pv = qadc_get_voltage(ADC1_GPIO36_CHANNEL, 16) / 0.1648036124794745;
 	int bl = map_v(min(4200.0f, max(3300.0f, pv)), 3300, 4200, 1, 100);
 
@@ -106,7 +99,6 @@ void a22333(void* arg)
 	}
 
 	pb_lock("state_led", nullptr, [](void* arg){
-		led.pwm(0, 400, true);
 		pb_unlock("state_led");
 	});
 
@@ -132,17 +124,24 @@ void a22333(void* arg)
 			int  pin = snapshop.pin;
 			bool sta = snapshop.sta;
 
-			logi("GPIO %d interrrupt, val: %d", pin, sta);
-
-			led.pwm(sta? (bleConnected? 0.4:1.0):0.0, 70);
+			logi("IO %d -> %d", pin, sta);
 
 			if(bleKeyboard.isConnected())
 			{
 				if(sta)
 				{
-					km.release(pin, bleKeyboard);
+					km.release(pin, bleKeyboard, [](uint8_t key){
+						if(bleConnected)
+						{
+							ls.newState(LEDSTA::CONNECTED);
+						}else{
+							ls.newState(LEDSTA::WAITING);
+						}
+					});
 				}else{
-					km.press(pin, bleKeyboard);
+					km.press(pin, bleKeyboard, [](uint8_t key){
+						ls.newState(LEDSTA::PRESSING);
+					});
 				}
 				
 			}
@@ -155,22 +154,16 @@ extern "C" void app_main()
 {
 	gpio_install_isr_service(0);
 
-	
-	// logi("Loading BLE service..");
 	bleKeyboard.begin();
 	bleKeyboard._onConnect = onBleConnect;
 	bleKeyboard._onDisconnect = onBleDisconnect;
 
-	// logi("Loading ADC..");
 	qadc_initialize();
 	qadc_config_io(ADC1_GPIO36_CHANNEL);
 
-	// logi("Loading PowerButton..");
 	power_button_init(15);
 
-	// logi("Loading UART..");
 	uart_input_init(onUartInput);
-
 
 	xTaskCreate(a22333, "a22333", 16*1024, NULL, 5, NULL);
 

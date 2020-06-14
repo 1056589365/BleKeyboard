@@ -22,6 +22,7 @@ LED::LED(int io)
 	channel_config.channel = LEDC_CHANNEL_0;
 	channel_config.duty = 0;
 	channel_config.timer_sel = LEDC_TIMER_0;
+	// channel_config.intr_type = LEDC_INTR_FADE_END;
 }
 
 void LED::initialize()
@@ -44,4 +45,76 @@ void LED::pwm(float percent, int duration, bool wait)
 	// logii("new duty: %f", percent);
 	ledc_set_fade_with_time(mode, channel, duty, duration);
 	ledc_fade_start(mode, channel, wait? LEDC_FADE_WAIT_DONE:LEDC_FADE_NO_WAIT);
+}
+
+
+
+
+
+
+void task_led_state(void* arg);
+
+
+LEDSTA::LEDSTA(int io) : led(io)
+{
+	led.initialize();
+}
+
+void LEDSTA::newState(STA sta)
+{
+	state = sta;
+	vTaskResume(work_handler);
+}
+
+void LEDSTA::start()
+{
+	xTaskCreate(task_led_state, "task_led_state", 4*1024, this, 10, &work_handler);
+}
+
+
+
+
+void task_led_state(void* arg)
+{
+	LEDSTA& ls =  *(LEDSTA*)arg;
+
+	while (true)
+	{
+		
+		switch (ls.state)
+		{
+		
+		case LEDSTA::WAITING:
+		{
+			bool dir = true;
+			while(ls.state==LEDSTA::WAITING)
+			{
+				TickType_t tick = xTaskGetTickCount();
+				int time = 1200;
+
+				ls.led.pwm(dir?0.7:0.05, time);
+				while(ls.state==LEDSTA::WAITING && (xTaskGetTickCount()-tick)*10<=time)
+					vTaskDelay(10/portTICK_RATE_MS);
+				dir = !dir;
+			}
+			// vTaskSuspend(NULL);
+			break;
+		}
+
+		case LEDSTA::CONNECTED:
+			ls.led.pwm(0.4, 80);
+			vTaskSuspend(NULL);
+			break;
+		
+		case LEDSTA::PRESSING:
+			ls.led.pwm(0.0, 80);
+			vTaskSuspend(NULL);
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	vTaskDelete(nullptr);
 }
