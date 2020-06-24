@@ -90,9 +90,9 @@ void task_led_state(void* arg)
 			while(ls.state==LEDSTA::WAITING)
 			{
 				TickType_t tick = xTaskGetTickCount();
-				int time = 1200;
+				int time = 700;
 
-				ls.led.pwm(dir?0.7:0.05, time);
+				ls.led.pwm(dir?0.6:0.02, time);
 				while(ls.state==LEDSTA::WAITING && (xTaskGetTickCount()-tick)*10<=time)
 					vTaskDelay(10/portTICK_RATE_MS);
 				dir = !dir;

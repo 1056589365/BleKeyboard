@@ -28,6 +28,8 @@ BleKeyboard bleKeyboard;
 void onUartInput(char* data, size_t len)
 {
 	logi("UART: %s", data);
+	float r = esp_random() / (float) UINT32_MAX;
+	bleKeyboard.setBatteryLevel((int)(100 * r));
 }
 
 
