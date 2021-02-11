@@ -10,8 +10,6 @@
 #include "BLEHIDDevice.h"
 #include "BLE2904.h"
 
-#include <esp_log.h>
-
 
 BLEHIDDevice::BLEHIDDevice(BLEServer* server) {
 	/*
@@ -196,8 +194,7 @@ BLECharacteristic* BLEHIDDevice::protocolMode() {
 
 void BLEHIDDevice::setBatteryLevel(uint8_t level) {
 	m_batteryLevelCharacteristic->setValue(&level, 1);
-	//m_batteryLevelCharacteristic->notify();
-	//ESP_LOGI("aa", "power: %d", level);
+	m_batteryLevelCharacteristic->notify();	
 }
 /*
  * @brief Returns battery level characteristic
