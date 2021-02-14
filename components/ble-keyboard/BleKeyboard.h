@@ -89,7 +89,6 @@ typedef struct
 class BleKeyboard : public Print
 {
 private:
-  BleConnectionStatus* connectionStatus;
   BLEHIDDevice* hid;
   BLECharacteristic* inputKeyboard;
   BLECharacteristic* outputKeyboard;
@@ -116,9 +115,7 @@ public:
   uint8_t batteryLevel;
   std::string deviceManufacturer;
   std::string deviceName;
-
-  void (*_onConnect)() = nullptr;
-  void (*_onDisconnect)() = nullptr;
+  BleConnectionStatus* connectionStatus;
 protected:
   virtual void onStarted(BLEServer *pServer) { };
 };

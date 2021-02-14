@@ -111,7 +111,7 @@ void a22333(void* arg)
 	VirtualKeyboard kb(&bleKeyboard);
 
 	kb.addPin(14, (uint8_t*)KEY_MEDIA_VOLUME_UP);
-	kb.addPin(4, (uint8_t*)KEY_MEDIA_VOLUME_DOWN);
+	kb.addPin(13, (uint8_t*)KEY_MEDIA_VOLUME_DOWN);
 	kb.addPin(33, (uint8_t*)KEY_MEDIA_PREVIOUS_TRACK);
 	kb.addPin(5,  (uint8_t*)KEY_MEDIA_NEXT_TRACK);
 	kb.addPin(12, (uint8_t*)KEY_MEDIA_PLAY_PAUSE);
@@ -177,9 +177,9 @@ extern "C" void app_main()
 {
 	PowerButton::installISRService();
 
+	bleKeyboard.connectionStatus->_onConnect = onBleConnect;
+	bleKeyboard.connectionStatus->_onDisconnect = onBleDisconnect;
 	bleKeyboard.begin();
-	bleKeyboard._onConnect = onBleConnect;
-	bleKeyboard._onDisconnect = onBleDisconnect;
 
 	PowerVoltageSample::init_adc();
 	pvs = new PowerVoltageSample(ADC1_CHANNEL_0);
