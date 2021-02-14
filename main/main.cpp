@@ -26,11 +26,12 @@ using namespace std;
 
 BleKeyboard bleKeyboard;
 PowerVoltageSample* pvs;
+LEDSTA ls(23);
 
-void onUartInput(char* data, size_t len)
-{
-	logi("UART: %s", data);
-}
+// void onUartInput(char* data, size_t len)
+// {
+// 	logi("UART: %s", data);
+// }
 
 
 struct sp
@@ -55,7 +56,6 @@ void IRAM_ATTR gpioisr(void* arg)
 bool bleConnected = false;
 
 
-LEDSTA ls(23);
 
 void onBleConnect()
 {
@@ -74,7 +74,6 @@ void onBleDisconnect()
 void a22333(void* arg)
 {
 	ls.start();
-
 	ls.newState(LEDSTA::WAITING);
 
 	float pv = pvs->sample(16) / 0.1648036124794745;
@@ -154,6 +153,32 @@ void a22333(void* arg)
     }
 }
 
+bool task_power_voltage_detector_exit_flag = false;
+
+void task_power_voltage_detector(void* arg)
+{
+	PowerButton::hook("power_voltage_detector", nullptr, [](void* arg){
+		task_power_voltage_detector_exit_flag = true;
+		PowerButton::unhook("power_voltage_detector");
+	});
+
+	while (!task_power_voltage_detector_exit_flag)
+	{
+		vTaskDelay(30*1000 / portTICK_RATE_MS);
+
+		float raw = pvs->sample(16) / 0.1648036124794745;
+		int level = map_v(min(4200.0f, max(3300.0f, raw)), 3300.0f, 4200.0f, 1, 100);
+
+		logi("PowerVol: %d (raw: %d)", level, (int)raw);
+
+		if(bleKeyboard.isConnected())
+		{
+			bleKeyboard.setBatteryLevel(level);
+			logi("Reported: %d", level);
+		}
+	}
+}
+
 
 extern "C" void app_main()
 {
@@ -168,10 +193,11 @@ extern "C" void app_main()
 
 	PowerButton::initializePin(15);
 
-	uart_input_init(onUartInput);
+	// uart_input_init(onUartInput);
 
 	xTaskCreate(a22333, "a22333", 16*1024, NULL, 5, NULL);
+	xTaskCreate(task_power_voltage_detector, "PowerVoltageDetector", 4*1024, NULL, 5, NULL);
 
-    logi("initialize done");
+	
 }
 
