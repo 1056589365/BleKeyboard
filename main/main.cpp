@@ -13,7 +13,7 @@
 #include "power_voltage_sample.h"
 #include "state_led.h"
 #include "uart_input.h"
-#include "keyboard.h"
+#include "virtual_keyboard.h"
 
 #include "utils.h"
 #include "project.h"
@@ -108,14 +108,14 @@ void a22333(void* arg)
 	snapshop.pin = -1;
 	snapshop.sta = -100;
 
-	KeycodeMapping km;
+	VirtualKeyboard kb(&bleKeyboard);
 
-	km.add(14, (uint8_t*)KEY_MEDIA_VOLUME_UP);
-	km.add(13, (uint8_t*)KEY_MEDIA_VOLUME_DOWN);
-	km.add(33, (uint8_t*)KEY_MEDIA_PREVIOUS_TRACK);
-	km.add(5,  (uint8_t*)KEY_MEDIA_NEXT_TRACK);
-	km.add(12, (uint8_t*)KEY_MEDIA_PLAY_PAUSE);
-	km.add(17, (uint8_t*)KEY_MEDIA_MUTE);
+	kb.addPin(14, (uint8_t*)KEY_MEDIA_VOLUME_UP);
+	kb.addPin(4, (uint8_t*)KEY_MEDIA_VOLUME_DOWN);
+	kb.addPin(33, (uint8_t*)KEY_MEDIA_PREVIOUS_TRACK);
+	kb.addPin(5,  (uint8_t*)KEY_MEDIA_NEXT_TRACK);
+	kb.addPin(12, (uint8_t*)KEY_MEDIA_PLAY_PAUSE);
+	kb.addPin(17, (uint8_t*)KEY_MEDIA_MUTE);
 
     while(true)
 	{
@@ -124,28 +124,21 @@ void a22333(void* arg)
 			int  pin = snapshop.pin;
 			bool sta = snapshop.sta;
 
-			logi("IO %d -> %d", pin, sta);
+			logi("IO %d: %d", pin, sta);
 
-			int bl = (int)(((float)esp_random()) / UINT32_MAX * 100);
-			logi("X_power info (%d)", bl);
-			bleKeyboard.setBatteryLevel(bl);
+			// int bl = (int)(((float)esp_random()) / UINT32_MAX * 100);
+			// logi("X_power info (%d)", bl);
+			// bleKeyboard.setBatteryLevel(bl);
 
-			if(bleKeyboard.isConnected())
+			if(bleKeyboard.isConnected() || kb.exists(pin))
 			{
 				if(sta)
 				{
-					km.release(pin, bleKeyboard, [](uint8_t key){
-						if(bleConnected)
-						{
-							ls.newState(LEDSTA::CONNECTED);
-						}else{
-							ls.newState(LEDSTA::WAITING);
-						}
-					});
+					kb.release(pin);
+					ls.newState(LEDSTA::CONNECTED);
 				}else{
-					km.press(pin, bleKeyboard, [](uint8_t key){
-						ls.newState(LEDSTA::PRESSING);
-					});
+					kb.press(pin);
+					ls.newState(LEDSTA::PRESSING);
 				}
 				
 			}
@@ -169,12 +162,12 @@ void task_power_voltage_detector(void* arg)
 		float raw = pvs->sample(16) / 0.1648036124794745;
 		int level = map_v(min(4200.0f, max(3300.0f, raw)), 3300.0f, 4200.0f, 1, 100);
 
-		logi("PowerVol: %d (raw: %d)", level, (int)raw);
+		// logi("PowerVol: %d (raw: %d)", level, (int)raw);
 
 		if(bleKeyboard.isConnected())
 		{
 			bleKeyboard.setBatteryLevel(level);
-			logi("Reported: %d", level);
+			// logi("Reported: %d", level);
 		}
 	}
 }
