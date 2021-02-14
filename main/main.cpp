@@ -14,14 +14,15 @@
 #include "state_led.h"
 #include "uart_input.h"
 #include "keyboard.h"
-#include "error_check.h"
 
+#include "utils.h"
 #include "project.h"
 
-#define logi(...) ESP_LOGI("main", ##__VA_ARGS__)
 
 using namespace std;
 
+
+#define logi(...) ESP_LOGI("main", ##__VA_ARGS__)
 
 BleKeyboard bleKeyboard;
 
@@ -49,7 +50,6 @@ void IRAM_ATTR gpioisr(void* arg)
     xQueueSendFromISR(isrq, &ssss, NULL);
 }
 
-int pins[] = {32, 33, 25, 26, 27, 14, 12 ,13 /*15 // power button*/ ,4 , 16, 17,5,18,19, 21, /*//22,23 // reserve*/ };
 
 bool bleConnected = false;
 
@@ -98,8 +98,8 @@ void a22333(void* arg)
 		gpio_isr_handler_add(gpio_num_t(pin), gpioisr, (void*)&pins[i]);
 	}
 
-	pb_lock("state_led", nullptr, [](void* arg){
-		pb_unlock("state_led");
+	PowerButton::hook("state_led", nullptr, [](void* arg){
+		PowerButton::unhook("state_led");
 	});
 
 	logi("init done");
@@ -125,6 +125,10 @@ void a22333(void* arg)
 			bool sta = snapshop.sta;
 
 			logi("IO %d -> %d", pin, sta);
+
+			int bl = (int)(((float)esp_random()) / UINT32_MAX * 100);
+			logi("X_power info (%d)", bl);
+			bleKeyboard.setBatteryLevel(bl);
 
 			if(bleKeyboard.isConnected())
 			{
@@ -152,7 +156,7 @@ void a22333(void* arg)
 
 extern "C" void app_main()
 {
-	gpio_install_isr_service(0);
+	PowerButton::installISRService();
 
 	bleKeyboard.begin();
 	bleKeyboard._onConnect = onBleConnect;
@@ -161,7 +165,7 @@ extern "C" void app_main()
 	qadc_initialize();
 	qadc_config_io(ADC1_CHANNEL_0);
 
-	power_button_init(15);
+	PowerButton::initializePin(15);
 
 	uart_input_init(onUartInput);
 
