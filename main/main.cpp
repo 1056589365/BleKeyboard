@@ -10,7 +10,7 @@
 
 #include "BleKeyboard.h"
 #include "power_button.h"
-#include "qadc.h"
+#include "power_voltage_sample.h"
 #include "state_led.h"
 #include "uart_input.h"
 #include "keyboard.h"
@@ -25,6 +25,7 @@ using namespace std;
 #define logi(...) ESP_LOGI("main", ##__VA_ARGS__)
 
 BleKeyboard bleKeyboard;
+PowerVoltageSample* pvs;
 
 void onUartInput(char* data, size_t len)
 {
@@ -76,7 +77,7 @@ void a22333(void* arg)
 
 	ls.newState(LEDSTA::WAITING);
 
-	float pv = qadc_get_voltage(ADC1_CHANNEL_0, 16) / 0.1648036124794745;
+	float pv = pvs->sample(16) / 0.1648036124794745;
 	int bl = map_v(min(4200.0f, max(3300.0f, pv)), 3300, 4200, 1, 100);
 
 	logi("power info (%d/%d)", (int)pv, bl);
@@ -162,8 +163,8 @@ extern "C" void app_main()
 	bleKeyboard._onConnect = onBleConnect;
 	bleKeyboard._onDisconnect = onBleDisconnect;
 
-	qadc_initialize();
-	qadc_config_io(ADC1_CHANNEL_0);
+	PowerVoltageSample::init_adc();
+	pvs = new PowerVoltageSample(ADC1_CHANNEL_0);
 
 	PowerButton::initializePin(15);
 
