@@ -11,9 +11,15 @@ class PowerVoltageSample
     esp_adc_cal_characteristics_t* adc_chars;
     adc_atten_t atten;
 
-    static void init_adc();
+    int max_voltage;
+    int min_voltage;
+
     PowerVoltageSample(adc1_channel_t channel, adc_atten_t atten=ADC_ATTEN_DB_11);
+
+    static void init_adc();
+    void set_voltage_range(int min_voltage, int max_voltage);
     int sample(int samples=8);
+    int get_power_voltage(int samples=8);
 
     private:
     static void check_efuse();

@@ -26,7 +26,7 @@ using namespace std;
 
 BleKeyboard bleKeyboard;
 PowerVoltageSample* pvs;
-LEDSTA ls(23);
+StateLed stateLed(23);
 
 // void onUartInput(char* data, size_t len)
 // {
@@ -55,33 +55,42 @@ void IRAM_ATTR gpioisr(void* arg)
 
 bool bleConnected = false;
 
+void uploadBatteryLevel()
+{
+	if(bleKeyboard.isConnected())
+	{
+		int bl = pvs->get_power_voltage();
 
+		logi("power info (%d)", bl);
+
+		bleKeyboard.setBatteryLevel(bl);
+
+		if(bl<=10)
+			stateLed.setState(StateLed::LOW_POWER, true);
+	} else {
+		logi("Faild to upload batteryLevel");
+	}
+}
 
 void onBleConnect()
 {
 	logi("ble connect");
 	bleConnected = true;
-	ls.newState(LEDSTA::CONNECTED);
+	stateLed.setState(StateLed::CONNECTED, true);
+
+	// uploadBatteryLevel();
 }
 
 void onBleDisconnect()
 {
 	logi("ble disconnect");
 	bleConnected = false;
-	ls.newState(LEDSTA::WAITING);
+	stateLed.setState(StateLed::CONNECTED, false);
 }
 
 void a22333(void* arg)
 {
-	ls.start();
-	ls.newState(LEDSTA::WAITING);
-
-	float pv = pvs->sample(16) / 0.1648036124794745;
-	int bl = map_v(min(4200.0f, max(3300.0f, pv)), 3300, 4200, 1, 100);
-
-	logi("power info (%d/%d)", (int)pv, bl);
-
-	bleKeyboard.setBatteryLevel(bl);
+	stateLed.start();
 
 	for(int i=0;i<sizeof(pins)/sizeof(int);i++)
 	{
@@ -98,10 +107,6 @@ void a22333(void* arg)
 		gpio_isr_handler_add(gpio_num_t(pin), gpioisr, (void*)&pins[i]);
 	}
 
-	PowerButton::hook("state_led", nullptr, [](void* arg){
-		PowerButton::unhook("state_led");
-	});
-
 	logi("init done");
 
 	sp snapshop;
@@ -111,7 +116,7 @@ void a22333(void* arg)
 	VirtualKeyboard kb(&bleKeyboard);
 
 	kb.addPin(14, (uint8_t*)KEY_MEDIA_VOLUME_UP);
-	kb.addPin(13, (uint8_t*)KEY_MEDIA_VOLUME_DOWN);
+	kb.addPin(4,  (uint8_t*)KEY_MEDIA_VOLUME_DOWN);
 	kb.addPin(33, (uint8_t*)KEY_MEDIA_PREVIOUS_TRACK);
 	kb.addPin(5,  (uint8_t*)KEY_MEDIA_NEXT_TRACK);
 	kb.addPin(12, (uint8_t*)KEY_MEDIA_PLAY_PAUSE);
@@ -126,21 +131,28 @@ void a22333(void* arg)
 
 			logi("IO %d: %d", pin, sta);
 
-			// int bl = (int)(((float)esp_random()) / UINT32_MAX * 100);
-			// logi("X_power info (%d)", bl);
-			// bleKeyboard.setBatteryLevel(bl);
 
 			if(bleKeyboard.isConnected() || kb.exists(pin))
 			{
 				if(sta)
 				{
 					kb.release(pin);
-					ls.newState(LEDSTA::CONNECTED);
+					stateLed.setState(StateLed::PRESSING, false);
 				}else{
 					kb.press(pin);
-					ls.newState(LEDSTA::PRESSING);
+					stateLed.setState(StateLed::PRESSING, true);
 				}
+
+				uploadBatteryLevel();
+			}
+
+			if(pin==32) // top-left corner
+			{
+				// int bl = (int)(((float)esp_random()) / UINT32_MAX * 100);
+				// logi("Random power info: %d", bl);
+				// bleKeyboard.setBatteryLevel(bl);
 				
+				stateLed.setState(StateLed::POWER_LEVEL, !sta);
 			}
 		}
     }
@@ -159,16 +171,18 @@ void task_power_voltage_detector(void* arg)
 	{
 		vTaskDelay(30*1000 / portTICK_RATE_MS);
 
-		float raw = pvs->sample(16) / 0.1648036124794745;
-		int level = map_v(min(4200.0f, max(3300.0f, raw)), 3300.0f, 4200.0f, 1, 100);
+		uploadBatteryLevel();
+
+		// float raw = pvs->sample(16) / 0.1648036124794745;
+		// int level = map_v(min(4200.0f, max(3300.0f, raw)), 3300.0f, 4200.0f, 1, 100);
 
 		// logi("PowerVol: %d (raw: %d)", level, (int)raw);
 
-		if(bleKeyboard.isConnected())
-		{
-			bleKeyboard.setBatteryLevel(level);
-			// logi("Reported: %d", level);
-		}
+		// if(bleKeyboard.isConnected())
+		// {
+		// 	bleKeyboard.setBatteryLevel(level);
+		// 	// logi("Reported: %d", level);
+		// }
 	}
 }
 
@@ -183,6 +197,7 @@ extern "C" void app_main()
 
 	PowerVoltageSample::init_adc();
 	pvs = new PowerVoltageSample(ADC1_CHANNEL_0);
+	pvs->set_voltage_range(3500, 4200);
 
 	PowerButton::initializePin(15);
 

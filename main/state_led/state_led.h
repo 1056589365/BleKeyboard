@@ -1,38 +1,38 @@
 #pragma once
+#include "map"
 #include "driver/ledc.h"
 #include <freertos/FreeRTOS.h>
 #include "freertos/task.h"
 
-class LED
+class StateLed
 {
-public:
-	int io;
-	ledc_timer_config_t timer_config;
-	ledc_channel_config_t channel_config;
+	public:
+		enum State {
+			DEFAULT,
+			CONNECTED,
+			PRESSING,
+			POWER_LEVEL,
+			LOW_POWER,
 
-	LED(int io);
-	void initialize();
-	void pwm(float percent, int duration, bool wait=false);
-};
+			STATE_MAX
+		};
 
-class LEDSTA
-{
-public:
-	enum STA{
-		WAITING,
-		CONNECTED,
-		PRESSING,
-	};
+		int io;
+		TaskHandle_t task;
+		std::map<State, bool> states;
+		float lastPwm = -1;
 
-	LED led;
-	STA state = WAITING;
-	STA last = state;
-	TaskHandle_t work_handler;
+		StateLed(int io);
 
-	LEDSTA(int io);
+		void start();
+		void setState(State sta, bool enabled);
+		bool getState(State sta);
+		static void task_led_state(void* arg);
 
-	void newState(STA sta);
+	private:
+		ledc_timer_config_t timer_config;
+		ledc_channel_config_t channel_config;
 
-	void start();
+		void pwm(float percent, int duration, bool wait=true);
 
 };

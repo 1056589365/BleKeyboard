@@ -5,19 +5,10 @@
 #include <esp_adc_cal.h>
 
 #include "power_voltage_sample.h"
+#include "utils.h"
 
-
-
-// bool qadcInitialized = false;
-
-void PowerVoltageSample::init_adc()
-{
-    PowerVoltageSample::check_efuse();
-
-    adc1_config_width(ADC_WIDTH_BIT_12);
-
-    ESP_LOGI("PowerVoltageSample", "ADC initialized");
-}
+#define max(a,b) ( ((a)>(b)) ? (a):(b) )
+#define min(a,b) ( ((a)>(b)) ? (b):(a) )
 
 PowerVoltageSample::PowerVoltageSample(adc1_channel_t channel, adc_atten_t atten)
 {
@@ -30,6 +21,22 @@ PowerVoltageSample::PowerVoltageSample(adc1_channel_t channel, adc_atten_t atten
 
     adc1_config_channel_atten(channel, atten); // soc/include/hal/adc_types.h
 }
+
+void PowerVoltageSample::init_adc()
+{
+    PowerVoltageSample::check_efuse();
+
+    adc1_config_width(ADC_WIDTH_BIT_12);
+
+    ESP_LOGI("PowerVoltageSample", "ADC initialized");
+}
+
+void PowerVoltageSample::set_voltage_range(int min_voltage, int max_voltage)
+{
+    this->min_voltage = min_voltage;
+    this->max_voltage = max_voltage;
+}
+
 
 int PowerVoltageSample::sample(int samples)
 {
@@ -48,6 +55,16 @@ int PowerVoltageSample::sample(int samples)
 
     // return (int)voltage / offset;
     return (int)voltage;
+}
+
+int PowerVoltageSample::get_power_voltage(int samples)
+{
+    float min_vol = (float) this->min_voltage;
+    float max_vol = (float) this->max_voltage;
+    
+    float pv = this->sample(samples) / 0.1648036124794745;
+
+	return map_v(min(max_vol, max(min_vol, pv)), min_vol, max_vol, 1, 100);
 }
 
 void PowerVoltageSample::PowerVoltageSample::check_efuse()
