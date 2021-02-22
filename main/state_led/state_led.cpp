@@ -60,7 +60,7 @@ void StateLed::task_led_state(void* arg)
 	_this->states[State(0)] = true;
 
 	StateLed::State lastSta = StateLed::DEFAULT;
-	int interval = 500;
+	int interval = 0;
 		
 	while (true)
 	{
@@ -87,9 +87,15 @@ void StateLed::task_led_state(void* arg)
 					}
 
 					case CONNECTED:
-						if(isNewState)
-							_this->pwm(0.0, 10);
-						_this->pwm(0.4, 1300);
+						if(lastSta != PRESSING)
+						{
+							if(isNewState)
+								_this->pwm(0.0, 10);
+							_this->pwm(0.4, 1300);
+						} else {
+							_this->pwm(0.4, 80);
+						}
+						
 						break;
 					
 					case PRESSING:
@@ -127,7 +133,7 @@ void StateLed::task_led_state(void* arg)
 				if(isNewState)
 				{
 					lastSta = State(i);
-					interval = 500;
+					interval = 10;
 				} else {
 					int d = min(max(interval, 0), 10000);
 					// logi("Interval: %d", d);
