@@ -116,6 +116,7 @@ public:
   std::string deviceManufacturer;
   std::string deviceName;
   BleConnectionStatus* connectionStatus;
+  BLEAdvertising* advertising;
 protected:
   virtual void onStarted(BLEServer *pServer) { };
 };

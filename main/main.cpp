@@ -20,6 +20,8 @@
 
 #define logi(...) ESP_LOGI("main", ##__VA_ARGS__)
 
+TaskHandle_t handle_ble_reconnect;
+
 BleKeyboard bleKeyboard;
 PowerVoltageSample* pvs;
 StateLed stateLed(23);
@@ -32,8 +34,7 @@ void uploadBatteryLevel()
 	{
 		int bl = pvs->get_power_voltage();
 
-		logi("power info (%d)", bl);
-
+		logi("Power: %d", bl);
 		bleKeyboard.setBatteryLevel(bl);
 
 		if(bl<=10)
@@ -58,9 +59,28 @@ void onBleDisconnect()
 	bleConnected = false;
 	stateLed.setState(StateLed::CONNECTED, false);
 
-	logi("reconnecting..");
-	bleKeyboard.advertising->stop();
-	bleKeyboard.advertising->start();
+	vTaskResume(handle_ble_reconnect);
+}
+
+
+void task_ble_reconnect(void* arg)
+{
+	vTaskSuspend(nullptr);
+	while (true)
+	{
+		if(!bleKeyboard.isConnected())
+		{
+			if(bleKeyboard.advertising!=nullptr)
+			{
+				logi("reconnecting..");
+				bleKeyboard.advertising->stop();
+				bleKeyboard.advertising->start();
+
+				// vTaskDelay(10*1000 / portTICK_RATE_MS);
+			}
+		}
+		vTaskSuspend(nullptr);
+	}
 }
 
 void main_task(void* arg)
@@ -105,6 +125,11 @@ void main_task(void* arg)
 				// bleKeyboard.setBatteryLevel(bl);
 				
 				stateLed.setState(StateLed::POWER_LEVEL, !sta);
+
+				if(!sta)
+				{
+					uploadBatteryLevel();
+				}
 			}
 		}
     }
@@ -152,5 +177,6 @@ extern "C" void app_main()
 
 	xTaskCreate(main_task, "main_task", 16*1024, NULL, 5, NULL);
 	xTaskCreate(task_power_voltage_detector, "PowerVoltageDetector", 4*1024, NULL, 5, NULL);
+	xTaskCreate(task_ble_reconnect, "BleReconnect", 4*1024, NULL, 5, &handle_ble_reconnect);
 }
 
