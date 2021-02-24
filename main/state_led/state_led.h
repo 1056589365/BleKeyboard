@@ -11,9 +11,8 @@ class StateLed
 			DEFAULT,
 			CONNECTED,
 			PRESSING,
-			POWER_LEVEL,
 			LOW_POWER,
-
+			POWER_LEVEL,
 			STATE_MAX
 		};
 
