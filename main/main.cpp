@@ -87,12 +87,12 @@ void main_task(void* arg)
 {
 	VirtualKeyboard kb(&bleKeyboard);
 
-	kb.addPin(14, (uint8_t*)KEY_MEDIA_VOLUME_UP);
-	kb.addPin(4,  (uint8_t*)KEY_MEDIA_VOLUME_DOWN);
-	kb.addPin(33, (uint8_t*)KEY_MEDIA_PREVIOUS_TRACK);
-	kb.addPin(5,  (uint8_t*)KEY_MEDIA_NEXT_TRACK);
-	kb.addPin(12, (uint8_t*)KEY_MEDIA_PLAY_PAUSE);
-	kb.addPin(17, (uint8_t*)KEY_MEDIA_MUTE);
+	kb.addPin(4,  (uint8_t*)KEY_MEDIA_VOLUME_UP);
+	kb.addPin(16, (uint8_t*)KEY_MEDIA_VOLUME_DOWN);
+	kb.addPin(27, (uint8_t*)KEY_MEDIA_PREVIOUS_TRACK);
+	kb.addPin(21, (uint8_t*)KEY_MEDIA_NEXT_TRACK);
+	kb.addPin(26, (uint8_t*)KEY_MEDIA_PLAY_PAUSE);
+	kb.addPin(25, (uint8_t*)KEY_MEDIA_MUTE);
 
 	PinLevel pinLevel(-1, -100);
 
