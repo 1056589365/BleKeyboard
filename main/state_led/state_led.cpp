@@ -99,7 +99,7 @@ void StateLed::task_led_state(void* arg)
 						break;
 					
 					case PRESSING:
-						_this->pwm(0.0, 80);
+						_this->pwm(0.02, 80);
 						break;
 					
 					case POWER_LEVEL:
